@@ -1,4 +1,4 @@
-from blackjack.cards import Card, Deck, Hand
+from blackjack.cards import Deck, Hand
 
 deck = Deck()
 deck.shuffle()

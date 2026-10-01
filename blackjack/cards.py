@@ -30,9 +30,10 @@ class Deck:
 
                     
 class Hand:
-    def __init__(self):
+    def __init__(self, bet=0):
         self.cards = []
         self.value = 0
+        self.bet = bet
     
     def add_card(self, card):
         self.cards.append(card)
@@ -55,3 +56,8 @@ class Hand:
             ace_count -= 1
         
         return self.value
+
+    def show_hand(self):
+        for card in self.cards:
+            print(card)
+        print("Hand value:", self.value)
