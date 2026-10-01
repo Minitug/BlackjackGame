@@ -34,6 +34,8 @@ class Hand:
         self.cards = []
         self.value = 0
         self.bet = bet
+        self.bust = False
+        self.blackjack = False
     
     def add_card(self, card):
         self.cards.append(card)
@@ -54,6 +56,9 @@ class Hand:
         while self.value > 21 and ace_count:
             self.value -= 10
             ace_count -= 1
+
+        if self.value > 21:
+            self.bust = True
         
         return self.value
 

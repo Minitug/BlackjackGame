@@ -1,31 +1,17 @@
 from blackjack.cards import Deck, Hand
+from blackjack.players import Player
+from blackjack.game import BlackjackGame
 
-deck = Deck()
-deck.shuffle()
-# for card in deck.cards:
-#     print(card.suit, card.rank)
-playerhand = Hand()
-dealerhand = Hand()
-playerhand.add_card(deck.draw_card())
-dealerhand.add_card(deck.draw_card())
-playerhand.add_card(deck.draw_card())
-dealerhand.add_card(deck.draw_card())
-print("Player's hand:")
-for card in playerhand.cards:
-    print(card.suit, card.rank)
-print("Player hand value:", playerhand.value)
-print("Dealer's hand:")
-for card in dealerhand.cards:
-    print(card.suit, card.rank)
-print("Dealer hand value:", dealerhand.value)
 
-if playerhand.value > 21:
-    print("Player busts - dealer wins!")
-elif dealerhand.value > 21:
-    print("Dealer busts - player wins!")
-elif dealerhand.value > playerhand.value:
-    print("Dealer wins!")
-elif playerhand.value > dealerhand.value:
-    print("Player wins!")
-else:
-    print("Push!")
+game = BlackjackGame()
+
+while True:
+    print("Do you want to play a round of blackjack? (Y/N)")
+    choice = input().strip().lower()
+    if choice == 'y':
+        game.play_round()
+    elif choice != 'n':
+        print("Invalid input. Please enter 'Y' or 'N'.")
+    else:
+        print("Thanks for playing!")
+        break
