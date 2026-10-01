@@ -49,10 +49,10 @@ class BlackjackGame:
                     if hand.value == 21:
                         print(f"{player.name} has a 21 point hand! Ending turn.")
                         break
-                    player.choice = input("Do you want to hit or stand? (H/S): ").upper()
-                    while player.choice not in ['H', 'S']:
-                        print("Invalid input. Please enter 'H' to hit or 'S' to stand.")
-                        player.choice = input("Do you want to hit or stand? (H/S): ").upper()
+                    player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
+                    while player.choice not in ['H', 'S', 'R']:
+                        print("Invalid input. Please enter 'H' to hit, 'S' to stand or 'R' to surrender.")
+                        player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
                     while hand.value < 21 and player.choice != 'S':
                         if player.choice == 'H':
                             hand.add_card(self.deck.draw_card())
@@ -64,10 +64,14 @@ class BlackjackGame:
                                 break
                             else:
                                 # print(f"{player.name}'s hand value:", hand.value)
-                                player.choice = input("Do you want to hit or stand? (H/S): ").upper()
-                                while player.choice not in ['H', 'S']:
-                                    print("Invalid input. Please enter 'H' to hit or 'S' to stand.")
-                                    player.choice = input("Do you want to hit or stand? (H/S): ").upper()
+                                player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
+                                while player.choice not in ['H', 'S', 'R']:
+                                    print("Invalid input. Please enter 'H' to hit, 'S' to stand or 'R' to surrender.")
+                                    player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
+                        elif player.choice == 'R':
+                            hand.surrender = True
+                            print(f"{player.name} has surrendered.")
+                            break
                 elif player.name == "Dealer" and not self.players[0].hands[0].bust and not self.players[0].hands[0].blackjack:
                     print(f"Dealer's hand: {hand.value}, Player's hand: {self.players[0].hands[0].value}")
                     if hand.value < 17:
@@ -85,7 +89,7 @@ class BlackjackGame:
             winning_multiplier = 0.5
 
         if (
-            self.players[0].hands[0].bust
+            self.players[0].hands[0].bust or self.players[0].hands[0].surrender
             or (
                 self.players[1].hands[0].value > self.players[0].hands[0].value
                 and not self.players[1].hands[0].bust
