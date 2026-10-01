@@ -1,4 +1,5 @@
 from blackjack.game import BlackjackGame
+from blackjack.players import Player
 
 print("Welcome to Blackjack!")
 print("You start with a balance of $1000.")
@@ -11,8 +12,8 @@ if not name or name.isspace() or name.lower() == "dealer":
     name = "Player"
 print(f"Good luck, {name}!")
 
-game = BlackjackGame()
-
+game = BlackjackGame([Player(name=name)])
+    
 winnings = 0
 
 while True:

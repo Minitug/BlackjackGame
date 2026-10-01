@@ -2,19 +2,32 @@ from blackjack.cards import Deck, Hand
 from blackjack.players import Player
 
 class BlackjackGame:
-    def __init__(self, players=[Player(name="Player")], starting_balance=1000, add_dealer=True, minimum_bet=10):
-        self.players = []
+    def __init__(
+        self,
+        players=None,
+        starting_balance=1000,
+        add_dealer=True,
+        minimum_bet=10
+    ):
+        if players is None:
+            players = [Player(name="Player")]
+        else:
+            players = list(players)
+
         if add_dealer:
             players.append(Player(name="Dealer"))
+
+        self.players = []
+
         for player in players:
             if player.name == "Dealer":
-                player.balance = float('inf')  # Dealer has infinite balance
-            else:    
+                player.balance = float("inf")
+            else:
                 player.balance = starting_balance
-            
+
             self.players.append(player)
-            self.choice = None
-            
+
+        self.choice = None
         self.minimum_bet = minimum_bet
 
         self.deck = Deck()
@@ -73,7 +86,7 @@ class BlackjackGame:
                             print(f"{player.name} has surrendered.")
                             break
                 elif player.name == "Dealer" and not self.players[0].hands[0].bust and not self.players[0].hands[0].blackjack:
-                    print(f"Dealer's hand: {hand.value}, Player's hand: {self.players[0].hands[0].value}")
+                    print(f"Dealer's hand: {hand.value}, {self.players[0].name}'s hand: {self.players[0].hands[0].value}")
                     if hand.value < 17:
                         hand.add_card(self.deck.draw_card())
                         print(f"{player.name}'s hand:")
