@@ -28,6 +28,14 @@ class Deck:
     def draw_card(self):
         return self.cards.pop()
 
+    def cards_remaining(self):
+        return len(self.cards)
+
+    def reset_deck(self):
+        self.cards = []
+        self.build_deck()
+        self.shuffle()
+
                     
 class Hand:
     def __init__(self, bet=0):
@@ -36,6 +44,7 @@ class Hand:
         self.bet = bet
         self.bust = False
         self.blackjack = False
+        self.surrender = False
     
     def add_card(self, card):
         self.cards.append(card)
