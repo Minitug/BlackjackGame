@@ -45,6 +45,8 @@ class Hand:
         self.bust = False
         self.blackjack = False
         self.surrender = False
+        self.double_down = False
+        self.stand = False
     
     def add_card(self, card):
         self.cards.append(card)
@@ -75,3 +77,11 @@ class Hand:
         for card in self.cards:
             print(card)
         print("Hand value:", self.value)
+
+    def is_finished(self):
+        return (
+            self.value >= 21
+            or self.surrender
+            or self.double_down
+            or self.stand
+        )

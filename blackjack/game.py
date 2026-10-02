@@ -35,8 +35,6 @@ class BlackjackGame:
 
 
     def play_round(self, bet):
-        winning_multiplier = 1
-
         if self.deck.cards_remaining() < 15:
             print("Reshuffling the deck...")
             self.deck.reset_deck()
@@ -51,43 +49,38 @@ class BlackjackGame:
 
         for player in self.players:
             for hand in player.hands:
-                if hand.value == 21:
+                if hand.value == 21 and len(hand.cards) == 2:
                     hand.blackjack = True
                     print(f"{player.name} has a blackjack!")
-                    break
+                    continue
                 if player.name != "Dealer":
                     print(f"{player.name}'s hand:")
                     hand.show_hand()
                     print(f"{player.name}'s hand value:", hand.value)
-                    if hand.value == 21:
-                        print(f"{player.name} has a 21 point hand! Ending turn.")
-                        break
-                    player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
-                    while player.choice not in ['H', 'S', 'R']:
-                        print("Invalid input. Please enter 'H' to hit, 'S' to stand or 'R' to surrender.")
-                        player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
-                    while hand.value < 21 and player.choice != 'S':
-                        if player.choice == 'H':
+                    while not hand.is_finished():
+                        player.choice = self.get_player_choice(hand, player.balance)
+                        if player.choice in ['H', 'D']:
                             hand.add_card(self.deck.draw_card())
                             print(f"{player.name}'s hand:")
                             hand.show_hand()
-                            # print(f"{player.name}'s hand value:", hand.value)
-                            if hand.value > 21:
-                                print(f"{player.name}'s hand busts!")
-                                break
-                            else:
-                                # print(f"{player.name}'s hand value:", hand.value)
-                                player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
-                                while player.choice not in ['H', 'S', 'R']:
-                                    print("Invalid input. Please enter 'H' to hit, 'S' to stand or 'R' to surrender.")
-                                    player.choice = input("Do you want to (H)it, (S)tand or sur(R)ender (H/S/R): ").upper()
-                        elif player.choice == 'R':
+                        if player.choice == 'R':
                             hand.surrender = True
-                            print(f"{player.name} has surrendered.")
-                            break
-                elif player.name == "Dealer" and not self.players[0].hands[0].bust and not self.players[0].hands[0].blackjack:
+                            print(f"{self.players[0].name} has surrendered.")
+                        elif player.choice == 'D':
+                            hand.double_down = True
+                            print(f"{self.players[0].name} has doubled down.")
+                        elif player.choice == 'S':
+                            hand.stand = True
+                            print(f"{self.players[0].name} has chosen to stand.")
+                elif (
+                    player.name == "Dealer"
+                    and not self.players[0].hands[0].bust
+                    and not self.players[0].hands[0].blackjack
+                    and not self.players[0].hands[0].surrender
+                    ):
                     print(f"Dealer's hand: {hand.value}, {self.players[0].name}'s hand: {self.players[0].hands[0].value}")
-                    if hand.value < 17:
+                    while not hand.is_finished() and hand.value < 17:
+                    # if hand.value < 17:
                         hand.add_card(self.deck.draw_card())
                         print(f"{player.name}'s hand:")
                         hand.show_hand()
@@ -96,24 +89,65 @@ class BlackjackGame:
         print(f"{self.players[0].name}'s final hand value:", self.players[0].hands[0].value)
         print(f"{self.players[1].name}'s final hand value:", self.players[1].hands[0].value)
 
-        if self.players[0].hands[0].blackjack and not self.players[1].hands[0].blackjack:
+        self.settle_bets(bet)
+
+
+    def get_player_choice(self, hand, balance):
+        valid_choices = ['H', 'S', 'R', 'D']  # H: Hit, S: Stand, R: Surrender, D: Double Down
+
+        while True:
+            choice = input("Do you want to (H)it, (S)tand, sur(R)ender or (D)ouble down (H/S/R/D): ").upper()
+
+            if choice in valid_choices:
+                if len(hand.cards) > 2:
+                    if choice == 'R':
+                        print("You can only surrender on your first two cards. Please choose another option.")
+                        continue
+                    elif choice == 'D':
+                        print("You can only double down on your first two cards. Please choose another option.")
+                        continue
+                if choice == 'D' and balance < hand.bet * 2:
+                    print("You don't have enough balance to double down. Please choose another option.")
+                    continue
+                    
+                return choice
+            else:
+                print("Invalid input. Please enter 'H' to hit, 'S' to stand, 'R' to surrender or 'D' to double down.")
+
+
+    def settle_bets(self, bet):
+        player = self.players[0]
+        dealer = self.players[1]
+
+        player_hand = player.hands[0]
+        dealer_hand = dealer.hands[0]
+
+        # player_balance = self.players[0].balance
+
+        winning_multiplier = 1
+        bet_multiplier = 1
+
+        if player_hand.blackjack and not dealer_hand.blackjack:
             winning_multiplier = 1.5
-        elif self.players[0].hands[0].surrender:
+        elif player_hand.surrender:
             winning_multiplier = 0.5
+        
+        if player_hand.double_down:
+            bet_multiplier = 2
 
         if (
-            self.players[0].hands[0].bust or self.players[0].hands[0].surrender
+            player_hand.bust or player_hand.surrender
             or (
-                self.players[1].hands[0].value > self.players[0].hands[0].value
-                and not self.players[1].hands[0].bust
+                dealer_hand.value > player_hand.value
+                and not dealer_hand.bust
             )
             ):
-            print(f"{self.players[1].name} wins!")
-            self.players[0].balance -= bet * winning_multiplier
-        elif self.players[0].hands[0].value > self.players[1].hands[0].value or self.players[1].hands[0].bust:
-            print(f"{self.players[0].name} wins!")
-            self.players[0].balance += bet * winning_multiplier
+            print(f"{dealer.name} wins!")
+            player.balance -= bet * winning_multiplier * bet_multiplier
+        elif player_hand.value > dealer_hand.value or dealer_hand.bust:
+            print(f"{player.name} wins!")
+            player.balance += bet * winning_multiplier * bet_multiplier
         else:
             print("It's a tie!")
 
-        print(f"{self.players[0].name}'s balance: ${self.players[0].balance}")
+        print(f"{player.name}'s balance: ${player.balance}")
