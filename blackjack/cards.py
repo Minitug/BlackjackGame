@@ -38,7 +38,7 @@ class Deck:
 
                     
 class Hand:
-    def __init__(self, bet=0):
+    def __init__(self, bet=0, split=False):
         self.cards = []
         self.value = 0
         self.bet = bet
@@ -47,6 +47,7 @@ class Hand:
         self.surrender = False
         self.double_down = False
         self.stand = False
+        self.split = split
     
     def add_card(self, card):
         self.cards.append(card)
@@ -85,3 +86,6 @@ class Hand:
             or self.double_down
             or self.stand
         )
+
+    def can_split(self):
+        return len(self.cards) == 2 and self.cards[0].rank == self.cards[1].rank
