@@ -28,6 +28,14 @@ class Deck:
     def draw_card(self):
         return self.cards.pop()
 
+    def cards_remaining(self):
+        return len(self.cards)
+
+    def reset_deck(self):
+        self.cards = []
+        self.build_deck()
+        self.shuffle()
+
                     
 class Hand:
     def __init__(self, bet=0):
@@ -36,6 +44,9 @@ class Hand:
         self.bet = bet
         self.bust = False
         self.blackjack = False
+        self.surrender = False
+        self.double_down = False
+        self.stand = False
     
     def add_card(self, card):
         self.cards.append(card)
@@ -66,3 +77,11 @@ class Hand:
         for card in self.cards:
             print(card)
         print("Hand value:", self.value)
+
+    def is_finished(self):
+        return (
+            self.value >= 21
+            or self.surrender
+            or self.double_down
+            or self.stand
+        )
