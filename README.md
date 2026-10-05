@@ -13,14 +13,14 @@ The project currently focuses on the core game logic and terminal gameplay, with
 - Hit and stand
 - Bust detection
 - Round-based game loop
-
-## Planned Features
-
 - Player balance and betting
 - Surrender
 - Double down
 - Split hands
-- Multiplayer
+- Multiplayer against dealer
+
+## Planned Features
+- Multiplayer head to head
 - GUI
 - Additional testing and edge-case handling
 
