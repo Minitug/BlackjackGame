@@ -14,11 +14,17 @@ env/
 
 # Visual Studio
 .vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
 
 # Build/output
 build/
 dist/
 *.egg-info/
+bin/
+obj/
 
 # OS files
 .DS_Store
