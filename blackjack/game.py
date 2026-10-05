@@ -32,42 +32,49 @@ class BlackjackGame:
         self.deck.shuffle()
 
 
-    def play_round(self, bet):
+    def play_round(self):
+
+        active_players = sum(player.still_playing for player in self.players)
+        minimum_cards = active_players * 10 + 5
+
         # hand_index = 0
-        if self.deck.cards_remaining() < 15:
+        if self.deck.cards_remaining() < minimum_cards:
             print("Reshuffling the deck...")
             self.deck.reset_deck()
 
         for player in self.players:
             player.hands = []
-            player.hands.append(Hand(bet=bet))
-
+            player.hands.append(Hand())
+        
         self.dealer.hands = []
         self.dealer.hands.append(Hand())
 
+        self.place_bets()
+
         for i in range(2):
             for player in self.players + [self.dealer]:
-                player.hands[0].add_card(self.deck.draw_card())
+                if player.still_playing:
+                    player.hands[0].add_card(self.deck.draw_card())
 
         for player in self.players:
             hand_index = 0
+            if player.still_playing:
+                while hand_index < len(player.hands):
+                    hand = player.hands[hand_index]
+                    if hand.value == 21 and len(hand.cards) == 2 and not hand.split:
+                        hand.blackjack = True
+                        print(f"{player.name} has a blackjack!")
+                        hand_index += 1
+                        continue
+                    # if player.name != "Dealer":
+                    
+                    split_occured = False
+                    split_occured = self.play_player_turn(player, hand)
 
-            while hand_index < len(player.hands):
-                hand = player.hands[hand_index]
-                if hand.value == 21 and len(hand.cards) == 2 and not hand.split:
-                    hand.blackjack = True
-                    print(f"{player.name} has a blackjack!")
+                    if split_occured:
+                        continue
+
                     hand_index += 1
-                    continue
-                # if player.name != "Dealer":
-                
-                split_occured = False
-                split_occured = self.play_player_turn(player, hand)
-
-                if split_occured:
-                    continue
-
-                hand_index += 1
 
         self.play_dealer_turn()
 
@@ -88,6 +95,8 @@ class BlackjackGame:
         if hand.can_split():
             valid_choices.append('P')
             options.append("s(P)lit")
+
+
 
         choice_text = f"Do you want to {', '.join(options)}? ({'/'.join(valid_choices)}): "
 
@@ -111,6 +120,9 @@ class BlackjackGame:
         for player in self.players:
         # player = self.players[0]
         # dealer = self.players[1]
+
+            if not player.still_playing:
+                continue
 
             hands_to_settle = len(player.hands)
             # settled_hands = []
@@ -152,7 +164,7 @@ class BlackjackGame:
                     winner_texts.append(f"{player.name} wins! (+${winnings:.2f})")
                     player.balance += winnings
                 else:
-                    winner_texts.append("It's a tie!")
+                    winner_texts.append(f"{player.name} plays a tie!")
 
                 # settled_hands.append()
 
@@ -163,9 +175,12 @@ class BlackjackGame:
             else:
                 settling_hand = 1
                 for text in winner_texts:
-                    print(f"Hand {settling_hand}: {text}")
+                    print(f"{player.name}'s hand {settling_hand}: {text}")
                     settling_hand += 1
-            print(f"{player.name}'s balance: ${player.balance}")
+            print(f"{player.name}'s balance: ${player.balance:.2f}")
+            if player.balance < self.minimum_bet:
+                player.stop_playing()
+            # player.calculate_winnings()
 
     def split_hand(self, player, hand):
         new_hand = Hand(bet=hand.bet, split=True)
@@ -184,44 +199,76 @@ class BlackjackGame:
 
         while not hand.is_finished():
             player.choice = self.get_player_choice(hand, player.balance)
-            if player.choice in ['H', 'D']:
-                hand.add_card(self.deck.draw_card())
-                print(f"{player.name}'s hand:")
-                hand.show_hand()
             if player.choice == 'R':
                 hand.surrender = True
-                print(f"{self.players[0].name} has surrendered.")
+                print(f"{player.name} has surrendered.")
             elif player.choice == 'D':
                 hand.double_down = True
                 hand.bet *= 2
-                print(f"{self.players[0].name} has doubled down.")
+                print(f"{player.name} has doubled down.")
             elif player.choice == 'S':
                 hand.stand = True
-                print(f"{self.players[0].name} has chosen to stand.")
+                print(f"{player.name} has chosen to stand.")
             elif player.choice == 'P':
                 self.split_hand(player, hand)
-                print(f"{self.players[0].name} has split their hand.")
+                print(f"{player.name} has split their hand.")
                 return True
                 # split_occured = True
                 # break  # Exit the loop to handle the new hand
                 # continue
             
-            return False
+            if player.choice in ['H', 'D']:
+                hand.add_card(self.deck.draw_card())
+                print(f"{player.name}'s hand:")
+                hand.show_hand()
+            
+        return False
 
     def play_dealer_turn(self):
-        # if (
-        # player.name == "Dealer"
         hand = self.dealer.hands[0]
+
         if any(
-            not hand.bust
-            and not hand.blackjack
-            and not hand.surrender
-            for hand in self.players[0].hands
-            ):
-        # print(f"Dealer's hand: {hand.value}, {self.players[0].name}'s hand: {self.players[0].hands[0].value}")
+            not player_hand.bust
+            and not player_hand.blackjack
+            and not player_hand.surrender
+            for player in self.players
+            for player_hand in player.hands
+        ):
             while not hand.is_finished() and hand.value < 17:
                 hand.add_card(self.deck.draw_card())
 
-                print("Dealer's hand:")
-                hand.show_hand()
-                print(f"Dealer's hand value: ", hand.value)
+            print("Dealer's hand:")
+            hand.show_hand()
+            print("Dealer's hand value:", hand.value)
+
+    def place_bets(self):
+        for player in self.players:
+            if not player.still_playing:
+                continue
+
+            while True:
+                print(
+                    f"{player.name}, place your bet. "
+                    f"Your balance is: {player.balance:.2f}. "
+                    f"Bet 0 to leave table."
+                )
+
+                try:
+                    bet = int(input().strip())
+                except ValueError:
+                    print("Invalid input. Number only.")
+                    continue
+
+                if bet == 0:
+                    player.stop_playing()
+                    break
+
+                elif bet < self.minimum_bet:
+                    print(f"Invalid input. Minimum bet is: {self.minimum_bet}")
+
+                elif bet > player.balance:
+                    print(f"Bet higher than balance. Your balance is: {player.balance:.2f}")
+
+                else:
+                    player.hands[0].bet = bet
+                    break

@@ -85,3 +85,216 @@ def test_split_hand():
     game.split_hand(player, hand)
 
     assert game.deck.cards_remaining() == cards_before - 2
+
+from blackjack.cards import Card, Hand
+from blackjack.players import Player
+from blackjack.game import BlackjackGame
+
+
+def make_hand(cards, bet=10):
+    """Helper for quickly creating a specific hand."""
+    hand = Hand(bet=bet)
+
+    for suit, rank in cards:
+        hand.add_card(Card(suit, rank))
+
+    return hand
+
+
+def test_different_players_can_have_different_bets():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.hands = [Hand(bet=100)]
+    tug.hands = [Hand(bet=250)]
+
+    assert mini.hands[0].bet == 100
+    assert tug.hands[0].bet == 250
+
+
+def test_one_player_bust_does_not_affect_other_player():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.hands = [
+        make_hand([
+            ("Hearts", "King"),
+            ("Spades", "8"),
+            ("Clubs", "5"),
+        ])
+    ]
+
+    tug.hands = [
+        make_hand([
+            ("Hearts", "King"),
+            ("Diamonds", "8"),
+        ])
+    ]
+
+    assert mini.hands[0].bust
+    assert not tug.hands[0].bust
+    assert tug.hands[0].value == 18
+
+
+def test_split_only_affects_correct_player():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.hands = [
+        make_hand([
+            ("Hearts", "8"),
+            ("Spades", "8"),
+        ], bet=50)
+    ]
+
+    tug.hands = [
+        make_hand([
+            ("Hearts", "King"),
+            ("Spades", "7"),
+        ], bet=100)
+    ]
+
+    game = BlackjackGame(
+        players=[mini, tug],
+        add_dealer=False
+    )
+
+    game.split_hand(mini, mini.hands[0])
+
+    assert len(mini.hands) == 2
+    assert len(tug.hands) == 1
+
+    assert mini.hands[0].bet == 50
+    assert mini.hands[1].bet == 50
+
+    assert tug.hands[0].bet == 100
+
+
+def test_both_players_can_split():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.hands = [
+        make_hand([
+            ("Hearts", "8"),
+            ("Spades", "8"),
+        ], bet=50)
+    ]
+
+    tug.hands = [
+        make_hand([
+            ("Clubs", "Queen"),
+            ("Diamonds", "Queen"),
+        ], bet=100)
+    ]
+
+    game = BlackjackGame(
+        players=[mini, tug],
+        add_dealer=False
+    )
+
+    game.split_hand(mini, mini.hands[0])
+    game.split_hand(tug, tug.hands[0])
+
+    assert len(mini.hands) == 2
+    assert len(tug.hands) == 2
+
+    assert mini.hands[0].bet == 50
+    assert mini.hands[1].bet == 50
+
+    assert tug.hands[0].bet == 100
+    assert tug.hands[1].bet == 100
+
+
+def test_double_down_only_changes_correct_hand():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.hands = [Hand(bet=100)]
+    tug.hands = [Hand(bet=200)]
+
+    mini.hands[0].bet *= 2
+    mini.hands[0].double_down = True
+
+    assert mini.hands[0].bet == 200
+    assert mini.hands[0].double_down
+
+    assert tug.hands[0].bet == 200
+    assert not tug.hands[0].double_down
+
+
+def test_player_can_stop_without_stopping_other_players():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.stop_playing()
+
+    assert not mini.still_playing
+    assert tug.still_playing
+
+    assert any(player.still_playing for player in [mini, tug])
+
+
+def test_no_players_still_playing():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    mini.stop_playing()
+    tug.stop_playing()
+
+    assert not any(
+        player.still_playing
+        for player in [mini, tug]
+    )
+
+
+def test_player_below_minimum_can_be_removed_independently():
+    mini = Player(name="Mini", balance=5)
+    tug = Player(name="Tug", balance=500)
+
+    minimum_bet = 10
+
+    if mini.balance < minimum_bet:
+        mini.stop_playing()
+
+    if tug.balance < minimum_bet:
+        tug.stop_playing()
+
+    assert not mini.still_playing
+    assert tug.still_playing
+
+def test_dealer_plays_if_one_player_busts_but_another_is_active():
+    mini = Player(name="Mini", balance=1000)
+    tug = Player(name="Tug", balance=1000)
+
+    # Mini busts with 24
+    mini.hands = [
+        make_hand([
+            ("Hearts", "King"),
+            ("Spades", "8"),
+            ("Clubs", "6"),
+        ], bet=100)
+    ]
+
+    # Tug stands on 20
+    tug.hands = [
+        make_hand([
+            ("Hearts", "King"),
+            ("Diamonds", "Queen"),
+        ], bet=100)
+    ]
+    tug.hands[0].stand = True
+
+    game = BlackjackGame(players=[mini, tug])
+
+    dealer_needs_to_play = any(
+        not hand.bust
+        and not hand.blackjack
+        and not hand.surrender
+        for player in game.players
+        for hand in player.hands
+    )
+
+    assert mini.hands[0].bust
+    assert not tug.hands[0].bust
+    assert dealer_needs_to_play
