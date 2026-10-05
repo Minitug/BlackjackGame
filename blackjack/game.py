@@ -139,10 +139,14 @@ class BlackjackGame:
                         dealer_hand.value > player_hand.value
                         and not dealer_hand.bust
                     )
+                    or (
+                        dealer_hand.blackjack
+                        and not player_hand.blackjack
+                    )
                     ):
                     winnings -= player_hand.bet * winning_multiplier
                     winner_texts.append(f"Dealer wins! (-${abs(winnings):.2f})")
-                    player.balance += winnings
+                    player.balance += winnings                
                 elif player_hand.value > dealer_hand.value or dealer_hand.bust:
                     winnings += player_hand.bet * winning_multiplier
                     winner_texts.append(f"{player.name} wins! (+${winnings:.2f})")
