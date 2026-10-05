@@ -77,7 +77,6 @@ class Hand:
     def show_hand(self):
         for card in self.cards:
             print(card)
-        print("Hand value:", self.value)
 
     def is_finished(self):
         return (
