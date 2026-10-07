@@ -1,7 +1,16 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
+from blackjack.players import Player
 from blackjack.game import BlackjackGame
 
+class PlayerRequest(BaseModel):
+    name: str
+
+
 app = FastAPI()
+
+game = None
+players = []
 
 @app.get("/hello")
 def hello():
@@ -18,7 +27,7 @@ def hello():
 def start_game():
     global game
 
-    game = BlackjackGame()
+    game = BlackjackGame(players)
 
     return {
         "message": "Game created",
@@ -33,5 +42,23 @@ def get_game_state():
 
     return {
         "minimum_bet": game.minimum_bet,
-        "cards_remaining": game.deck.cards_remaining()
+        "cards_remaining": game.deck.cards_remaining(),
+        "players": [
+            {
+                "name": player.name,
+                "balance": player.balance
+            }
+            for player in game.players
+        ]
+    }
+
+@app.post("/player/add")
+def add_player(request: PlayerRequest):
+    player = Player(name=request.name)
+    players.append(player)
+
+    return {
+        "message": f"{player.name} joined the game",
+        "name": player.name,
+        "balance": player.balance
     }
