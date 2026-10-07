@@ -260,19 +260,31 @@ class BlackjackGame:
                     print("Invalid input. Number only.")
                     continue
 
-                if bet == 0:
-                    player.stop_playing()
+                success, message = self.place_bet(player, bet)
+
+                if success:
                     break
 
-                elif bet < self.minimum_bet:
-                    print(f"Invalid input. Minimum bet is: {self.minimum_bet}")
+                print(message)
 
-                elif bet > player.balance:
-                    print(f"Bet higher than balance. Your balance is: {player.balance:.2f}")
+                
 
-                else:
-                    player.hands[0].bet = bet
-                    break
+    def place_bet(self, player, bet):
+        if bet == 0:
+            player.stop_playing()
+            return True, "Player left the table"
+
+        elif bet < self.minimum_bet:
+            message = f"Invalid input. Minimum bet is: {self.minimum_bet}"
+            return False, message
+
+        elif bet > player.balance:
+            message = f"Bet higher than balance. Your balance is: {player.balance:.2f}"
+            return False, message
+
+        else:
+            player.hands[0].bet = bet
+            return True, "Bet Accepted"
 
 
     def play_round_pvp(self):

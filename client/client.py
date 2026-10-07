@@ -63,5 +63,19 @@ while state["game_state"] == "Lobby":
         # print("Waiting for the host to start the game...")
         time.sleep(1)
 
-get_game_state()
+state = get_game_state()
+print(json.dumps(state, indent=4))
 
+while state["game_state"] == "Betting":
+    state = get_game_state()
+    action_needed_id = ""
+    for id in state["players_missing_actions"]:
+        if id == player_id:
+            input("Make your bet: ")
+
+    if state["message"] == "":
+        print("Everyone has made their bet")
+    else:
+        print(state["message"])
+        print("Someone have not made a bet yet")
+    time.sleep(1)

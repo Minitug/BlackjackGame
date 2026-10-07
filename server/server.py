@@ -10,6 +10,10 @@ class PlayerRequest(BaseModel):
 class StartGameRequest(BaseModel):
     player_id: str
 
+class PlayerBet(BaseModel):
+    player_id: str
+    bet_value: int
+
 
 app = FastAPI()
 
@@ -27,7 +31,7 @@ def hello():
     "Welcome to Blackjack!\n"
     "You start with a balance of $1000.\n"
     "You win by leaving the table with more money than you started with.\n"
-    "Do you want to play against a (D)ealer (up to 5 players) or 1v1 in (P)vP? (D/P)"
+    # "Do you want to play against a (D)ealer (up to 5 players) or 1v1 in (P)vP? (D/P)"
     )
     return{"message": message}
 
@@ -36,6 +40,7 @@ def hello():
 def start_game(request: StartGameRequest):
     if request.player_id == game.host_id:
         game.game_state = GameState.BETTING
+        game.new_round()
 
     return {
         "message": "Game created",
@@ -48,7 +53,26 @@ def get_game_state():
     if game is None:
         return{"error": "No game has been started"}
 
-    # BlackjackGame.game_state = BlackjackGame.GameState.LOBBY
+    message = ""
+    waiting_players_to_bet = []
+    waiting_players_to_bet_ids = []
+
+    if game.game_state == GameState.BETTING:
+        all_players_bet = all(
+            player.hands[0].bet is not None
+            for player in game.players
+        )
+
+
+        if not all_players_bet:
+            for player in game.players:
+                if player.hands[0].bet == None:
+                    waiting_players_to_bet.append(player.name)
+                    waiting_players_to_bet_ids.append(player.player_id)
+            message = "Waiting for players: " + ", ".join(waiting_players_to_bet) + "."
+
+        else:
+            game.game_state = GameState.PLAYING #Change later! get_game_state should NOT change it
 
     return {
         "game_state": game.game_state,
@@ -57,16 +81,18 @@ def get_game_state():
         "players": [
             {
                 "name": player.name,
-                "balance": player.balance
+                "balance": player.balance,
+                "hands": player.hands
+
             }
             for player in game.players
-        ]
+        ],
+        "message": message,
+        "players_missing_actions": waiting_players_to_bet_ids
     }
 
 @app.post("/player/add")
 def add_player(request: PlayerRequest):
-
-    
     player_id = str(uuid.uuid4())
     player = Player(name=request.name, player_id=player_id)
     is_host = len(game.players) == 0
@@ -80,8 +106,6 @@ def add_player(request: PlayerRequest):
 
     game.players.append(player)
 
-
-
     return {
         "message": message,
         "player_id": player_id,
@@ -89,3 +113,17 @@ def add_player(request: PlayerRequest):
         "balance": player.balance,
         "is_host": is_host
     }
+
+
+@app.post("/player/bet")
+def player_bet(request: PlayerBet):
+    found_player = None
+    for player in game.players:
+        if player.player_id == request.player_id:
+            found_player = player
+            break
+
+    if found_player == None:
+        return {"message": "Player was not found"}
+
+    found_player.hands[0].bet = request.bet_value
