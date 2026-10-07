@@ -1,16 +1,25 @@
+import uuid
 from fastapi import FastAPI
 from pydantic import BaseModel
 from blackjack.players import Player
-from blackjack.game import BlackjackGame
+from blackjack.game import BlackjackGame, GameState
 
 class PlayerRequest(BaseModel):
     name: str
+
+class StartGameRequest(BaseModel):
+    player_id: str
 
 
 app = FastAPI()
 
 game = None
 players = []
+
+game = BlackjackGame(
+    players=[],
+    start_as_lobby=True
+    )
 
 @app.get("/hello")
 def hello():
@@ -24,14 +33,13 @@ def hello():
 
 
 @app.post("/game/start")
-def start_game():
-    global game
-
-    game = BlackjackGame(players)
+def start_game(request: StartGameRequest):
+    if request.player_id == game.host_id:
+        game.game_state = GameState.BETTING
 
     return {
         "message": "Game created",
-        "minimum_bet": game.minimum_bet
+        "state": game.game_state.value
     }
 
 
@@ -40,7 +48,10 @@ def get_game_state():
     if game is None:
         return{"error": "No game has been started"}
 
+    # BlackjackGame.game_state = BlackjackGame.GameState.LOBBY
+
     return {
+        "game_state": game.game_state,
         "minimum_bet": game.minimum_bet,
         "cards_remaining": game.deck.cards_remaining(),
         "players": [
@@ -54,11 +65,27 @@ def get_game_state():
 
 @app.post("/player/add")
 def add_player(request: PlayerRequest):
-    player = Player(name=request.name)
-    players.append(player)
+
+    
+    player_id = str(uuid.uuid4())
+    player = Player(name=request.name, player_id=player_id)
+    is_host = len(game.players) == 0
+
+    message = f"{player.name} joined the game."
+
+    if is_host:
+        game.host_id = player_id
+        # player_is_host = True
+        message += " They're given host priveleges."
+
+    game.players.append(player)
+
+
 
     return {
-        "message": f"{player.name} joined the game",
+        "message": message,
+        "player_id": player_id,
         "name": player.name,
-        "balance": player.balance
+        "balance": player.balance,
+        "is_host": is_host
     }

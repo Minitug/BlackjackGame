@@ -1,5 +1,12 @@
 from blackjack.cards import Deck, Hand
 from blackjack.players import Player
+from enum import Enum
+
+class GameState(Enum):
+    LOBBY = "Lobby"
+    BETTING = "Betting"
+    PLAYING = "Playing"
+    ROUND_END = "Round End"
 
 class BlackjackGame:
     def __init__(
@@ -7,9 +14,10 @@ class BlackjackGame:
         players=None,
         starting_balance=1000,
         add_dealer=True,
-        minimum_bet=10
+        minimum_bet=10,
+        start_as_lobby=False
     ):
-        if players is None:
+        if players is None and not start_as_lobby:
             players = [Player(name="Player")]
         else:
             players = list(players)
@@ -31,6 +39,15 @@ class BlackjackGame:
 
         self.deck = Deck()
         self.deck.shuffle()
+
+        if start_as_lobby:
+            self.game_state = GameState.LOBBY
+        else:
+            self.game_state = GameState.BETTING
+
+        self.host_id = ""
+
+
 
 
     def play_round_against_dealer(self):
