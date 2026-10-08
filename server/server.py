@@ -7,13 +7,25 @@ from blackjack.game import BlackjackGame, GameState
 class PlayerRequest(BaseModel):
     name: str
 
-class StartGameRequest(BaseModel):
+class PlayerIdRequest(BaseModel):
     player_id: str
 
 class PlayerBet(BaseModel):
     player_id: str
     bet_value: int
 
+class PlayerAction(BaseModel):
+    player_id: str
+    action: str
+
+def find_player_through_id(request_player_id):
+    found_player = None
+    for player in game.players:
+            if player.player_id == request_player_id:
+                found_player = player
+                break
+
+    return found_player
 
 app = FastAPI()
 
@@ -28,16 +40,19 @@ game = BlackjackGame(
 @app.get("/hello")
 def hello():
     message = (
-    "Welcome to Blackjack!\n"
-    "You start with a balance of $1000.\n"
-    "You win by leaving the table with more money than you started with.\n"
-    # "Do you want to play against a (D)ealer (up to 5 players) or 1v1 in (P)vP? (D/P)"
+    "Welcome to Blackjack!"
+    "\nYou start with a balance of $1000."
+    "\nYou win by leaving the table with more money than you started with."
+    # "\nDo you want to play against a (D)ealer (up to 5 players) or 1v1 in (P)vP? (D/P)"
     )
     return{"message": message}
 
 
 @app.post("/game/start")
-def start_game(request: StartGameRequest):
+def start_game(request: PlayerIdRequest):
+
+    found_player = find_player_through_id(request.player_id)
+
     if request.player_id == game.host_id:
         game.game_state = GameState.BETTING
         game.new_round()
@@ -55,7 +70,10 @@ def get_game_state():
 
     message = ""
     waiting_players_to_bet = []
-    waiting_players_to_bet_ids = []
+    waiting_for_players_ids = []
+    valid_choices = []
+    options = []
+    dealer_hand = {}
 
     if game.game_state == GameState.BETTING:
         all_players_bet = all(
@@ -63,13 +81,32 @@ def get_game_state():
             for player in game.players
         )
 
+        for player in game.players:
+            print(
+                f"Player: {player.name}, "
+                f"Bet: {player.hands[0].bet}, "
+                f"Type: {type(player.hands[0].bet)}"
+            )
 
         if not all_players_bet:
             for player in game.players:
-                if player.hands[0].bet == None:
+                if player.hands[0].bet is None:
                     waiting_players_to_bet.append(player.name)
-                    waiting_players_to_bet_ids.append(player.player_id)
+                    waiting_for_players_ids.append(player.player_id)
             message = "Waiting for players: " + ", ".join(waiting_players_to_bet) + "."
+
+    if game.game_state == GameState.PLAYING:
+        player = game.players[game.current_player_index]
+        hand = player.hands[game.current_hand_index]
+        is_blackjack = game.test_blackjack(hand)
+        balance = player.balance
+        if not is_blackjack:
+            valid_choices, options = game.get_valid_actions(hand, balance)
+        message = f"{player.name} is playing their turn."
+        waiting_for_players_ids.append(player.player_id)
+
+    if game.game_state == GameState.ROUND_END:
+        dealer_hand = game.dealer.hands[0]
 
     return {
         "game_state": game.game_state,
@@ -84,8 +121,11 @@ def get_game_state():
             }
             for player in game.players
         ],
+        "dealer_hand": dealer_hand,
         "message": message,
-        "players_missing_actions": waiting_players_to_bet_ids
+        "players_missing_actions": waiting_for_players_ids,
+        "valid_choices": valid_choices,
+        "options": options
     }
 
 @app.post("/player/add")
@@ -115,10 +155,7 @@ def add_player(request: PlayerRequest):
 @app.post("/player/bet")
 def player_bet(request: PlayerBet):
     found_player = None
-    for player in game.players:
-        if player.player_id == request.player_id:
-            found_player = player
-            break
+    found_player = find_player_through_id(request.player_id)
 
     if found_player == None:
         return {"message": "Player was not found"}
@@ -139,3 +176,59 @@ def player_bet(request: PlayerBet):
         }
 
 
+@app.get("/player/{player_id}/hand")
+def get_player_hand(player_id: str):
+    found_player = find_player_through_id(player_id)
+
+    if found_player == None:
+        return {
+            "success": False,
+            "message": "It's not your turn."
+        }
+
+    current_hand = found_player.hands[game.current_hand_index]
+
+    return{
+        "success": True,
+        "hand": current_hand
+    }
+
+@app.post("/player/action")
+def player_action(request: PlayerAction):
+    if game.game_state != GameState.PLAYING:
+        return {
+            "success": False, 
+            "message": "Game is not in playing phase"
+        }
+
+    current_player = game.players[game.current_player_index]
+    
+    if request.player_id != current_player.player_id:
+            return {
+                "success": False,
+                "message": "It's not your turn."
+            }
+    
+    current_hand = current_player.hands[game.current_hand_index]
+
+    # bet_settlement = []
+
+    success, message = game.perform_player_action(
+        current_player,
+        current_hand,
+        request.action
+    )
+
+    if success:
+        more_turns = game.advance_turn()
+
+    if not more_turns:
+        game.play_dealer_turn()
+        game.game_state = GameState.ROUND_END
+        game.bet_settlements = game.settle_bets()
+
+    return {
+        "success": success,
+        "message": message,
+        "bet_settlements": game.bet_settlements
+    }
