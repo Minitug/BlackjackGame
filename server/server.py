@@ -71,9 +71,6 @@ def get_game_state():
                     waiting_players_to_bet_ids.append(player.player_id)
             message = "Waiting for players: " + ", ".join(waiting_players_to_bet) + "."
 
-        else:
-            game.game_state = GameState.PLAYING #Change later! get_game_state should NOT change it
-
     return {
         "game_state": game.game_state,
         "minimum_bet": game.minimum_bet,
@@ -127,3 +124,18 @@ def player_bet(request: PlayerBet):
         return {"message": "Player was not found"}
 
     found_player.hands[0].bet = request.bet_value
+
+    success, message = game.place_bet(found_player, request.bet_value)
+
+    if success and game.all_players_bet():
+        game.game_state = GameState.PLAYING
+        game.deal_initial_cards()
+        
+
+
+    return {
+        "success": success,
+        "message": message
+        }
+
+

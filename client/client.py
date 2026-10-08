@@ -17,9 +17,10 @@ def add_player():
     print(add_player["message"])
     # print(player_id)
 
-def get_game_state():
+def get_game_state(silent = True):
     state = requests.get("http://127.0.0.1:8000/game/state").json()
-    # print(json.dumps(state, indent=4))
+    if not silent:
+        print(json.dumps(state, indent=4))
     return state
 
 response = requests.get("http://127.0.0.1:8000/hello")
@@ -43,8 +44,8 @@ add_player()
 # data = response.json()
 # print(data["message"])
 
-state = get_game_state()
-print(json.dumps(state, indent=4))
+state = get_game_state(silent = False)
+# print(json.dumps(state, indent=4))
 
 while state["game_state"] == "Lobby":
     state = get_game_state()
@@ -55,23 +56,31 @@ while state["game_state"] == "Lobby":
             requests.post("http://127.0.0.1:8000/game/start", json={"player_id": player_id})
             break
         elif choice == 'r':
-            state = get_game_state()
-            print(json.dumps(state, indent=4))
+            state = get_game_state(silent = False)
+            # print(json.dumps(state, indent=4))
         else:
             print("Invalid input")
     else:
         # print("Waiting for the host to start the game...")
         time.sleep(1)
 
-state = get_game_state()
-print(json.dumps(state, indent=4))
-
+state = get_game_state(silent = False)
+# print(json.dumps(state, indent=4))
 while state["game_state"] == "Betting":
-    state = get_game_state()
+    state = get_game_state(silent = False)
+    # print(json.dumps(state, indent=4))
     action_needed_id = ""
     for id in state["players_missing_actions"]:
         if id == player_id:
-            input("Make your bet: ")
+            new_bet = input("Make your bet: ")
+            make_bet = requests.post(
+            "http://127.0.0.1:8000/player/bet",
+            json={"player_id": player_id,
+                    "bet_value": new_bet}
+            ).json()
+
+            print(make_bet["message"])
+            # time.sleep(3)
 
     if state["message"] == "":
         print("Everyone has made their bet")
@@ -79,3 +88,5 @@ while state["game_state"] == "Betting":
         print(state["message"])
         print("Someone have not made a bet yet")
     time.sleep(1)
+
+get_game_state(silent = False)
