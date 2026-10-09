@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 //using System.Xml.Linq;
 
 namespace BlackjackGUI
@@ -27,6 +28,8 @@ namespace BlackjackGUI
 
         private string playerId = "";
         private bool isHost = false;
+        private bool hasPlacedBet = false;
+        private int currentBet = 0;
 
         private void ShowJoinScreen()
         {
@@ -107,7 +110,7 @@ namespace BlackjackGUI
 
                 if (isHost)
                 {
-                    lblLobbyStatus.Text = "Press refresh to update list of players. Press start to start";
+                    lblLobbyStatus.Text = "Waiting for players. Press Start to begin.";
                 }
                 else
                 {
@@ -115,13 +118,15 @@ namespace BlackjackGUI
                 }
 
                 ShowLobbyScreen();
+
+                await RefreshLobbyAsync();
+
+                gameTimer.Start();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Could not connect to server: {ex.Message}");
             }
-
-            await RefreshLobbyAsync();
         }
 
         private async void btnRefresh_Click(object sender, EventArgs e)
@@ -143,12 +148,43 @@ namespace BlackjackGUI
 
                 response.EnsureSuccessStatusCode();
 
-                MessageBox.Show("Game started successfully");
+                //MessageBox.Show("Game started successfully");
             }
 
             catch (Exception ex)
             {
                 MessageBox.Show($"Could not start game: {ex.Message}");
+            }
+        }
+
+        private async Task RefreshGameStateAsync()
+        {
+            var state = await http.GetFromJsonAsync<GameStateResponse>(
+                "/game/state"
+            );
+
+            if (state == null)
+                return;
+
+            if (state.game_state == "Lobby")
+            {
+                if (!pnlLobby.Visible)
+                    ShowLobbyScreen();
+
+                lstPlayers.Items.Clear();
+
+                foreach (var player in state.players)
+                {
+                    lstPlayers.Items.Add(player.name);
+                }
+            }
+            else
+            {
+                if (!pnlGame.Visible)
+                    ShowGameScreen();
+
+                lblGameState.Text = state.game_state;
+                lblGameMessage.Text = state.message;
             }
         }
 
@@ -158,17 +194,7 @@ namespace BlackjackGUI
 
             try
             {
-                var state = await http.GetFromJsonAsync<GameStateResponse>(
-                    "/game/state"
-                );
-
-                if (state == null)
-                    return;
-
-                if (state.game_state == "Betting")
-                {
-                    ShowGameScreen();
-                }
+                await RefreshGameStateAsync();
             }
             catch (Exception ex)
             {
@@ -176,8 +202,51 @@ namespace BlackjackGUI
             }
             finally
             {
-                if (pnlLobby.Visible)
+                if (!IsDisposed)
                     gameTimer.Start();
+            }
+        }
+
+        private async void btnPlaceBet_Click(object sender, EventArgs e)
+        {
+            if (!int.TryParse(txtBetAmount.Text, out int betAmount))
+            {
+                MessageBox.Show("Please enter a valid number.");
+                return;
+            }
+
+            if (betAmount < 0)
+            {
+                MessageBox.Show("Bet cannot be negative.");
+                return;
+            }
+
+            try
+            {
+                btnPlaceBet.Enabled = false;
+
+                var response = await http.PostAsJsonAsync(
+                    "/player/bet",
+                    new
+                    {
+                        player_id = playerId,
+                        bet_value = betAmount
+                    }
+                );
+
+                response.EnsureSuccessStatusCode();
+
+                hasPlacedBet = true;
+
+                currentBet = betAmount;
+                lblBet.Text = $"Bet: {betAmount}";
+
+                await RefreshGameStateAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not place bet: {ex.Message}");
+                btnPlaceBet.Enabled = true;
             }
         }
     }

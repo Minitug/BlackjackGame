@@ -218,6 +218,7 @@
             btnPlaceBet.TabIndex = 14;
             btnPlaceBet.Text = "Place bet";
             btnPlaceBet.UseVisualStyleBackColor = false;
+            btnPlaceBet.Click += this.btnPlaceBet_Click;
             // 
             // btnGameRefresh
             // 
@@ -368,8 +369,8 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveBorder;
             ClientSize = new Size(2466, 1141);
-            Controls.Add(pnlLobby);
             Controls.Add(pnlGame);
+            Controls.Add(pnlLobby);
             Controls.Add(pnlJoin);
             Name = "BlackjackForm";
             Text = "BlackjackForm";
