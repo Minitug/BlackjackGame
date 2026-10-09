@@ -8,6 +8,7 @@ class GameState(Enum):
     BETTING = "Betting"
     PLAYING = "Playing"
     ROUND_END = "Round End"
+    GAME_OVER = "Game Over"
 
 class BlackjackGame:
     def __init__(
@@ -107,8 +108,8 @@ class BlackjackGame:
         return False
                             
 
-    def get_player_choice(self, hand, balance):
-        valid_choices, options = self.get_valid_actions(hand, balance)
+    def get_player_choice(self, hand, player):
+        valid_choices, options = self.get_valid_actions(hand, player)
 
         choice_text = f"Do you want to {', '.join(options)}? ({'/'.join(valid_choices)}): "
 
@@ -121,29 +122,30 @@ class BlackjackGame:
             print(f"Invalid input. {choice_text}")
 
 
-    def get_valid_actions(self, hand, balance):
+    def get_valid_actions(self, hand, player):
         valid_choices = ['H', 'S']
         options = ["(H)it", "(S)tand"]
 
+        commited = sum(
+            h.bet or 0
+            for h in player.hands
+        )
+
+        available_balance = player.balance - commited
+
         if self.dealer:  
             if len(hand.cards) == 2:
-                valid_choices.extend(['D'])
-                options.append("(D)ouble down")
+                if available_balance >= hand.bet:
+                    valid_choices.extend(['D'])
+                    options.append("(D)ouble down")
+
                 if not hand.split:
                     valid_choices.append('R')
                     options.append("Sur(R)ender")
 
-            if hand.can_split():
+            if hand.can_split() and available_balance >= hand.bet:
                 valid_choices.append('P')
                 options.append("s(P)lit")
-
-            if balance < hand.bet * 2:
-                if 'D' in valid_choices:
-                    valid_choices.remove('D')
-                    options.remove("(D)ouble down")
-                if 'P' in valid_choices:
-                    valid_choices.remove('P')
-                    options.remove("Sur(R)ender")
 
         return valid_choices, options
 
@@ -224,7 +226,7 @@ class BlackjackGame:
         print(f"{player.name}'s hand value:", hand.value)
 
         while not hand.is_finished():
-            action = self.get_player_choice(hand, player.balance)
+            action = self.get_player_choice(hand, player)
             action_result, action_message = self.perform_player_action(player, hand, action)
             print(action_message)
 
@@ -242,7 +244,7 @@ class BlackjackGame:
 
 
     def perform_player_action(self, player, hand, action):
-        valid_actions, options = self.get_valid_actions(hand, player.balance)
+        valid_actions, options = self.get_valid_actions(hand, player)
         if action not in valid_actions:
             return False, "Invalid action"
 

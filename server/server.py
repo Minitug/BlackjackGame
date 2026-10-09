@@ -71,7 +71,11 @@ def get_game_state():
 
     if game.ready_for_next_round():
         game.new_round()
-        game.game_state = GameState.BETTING
+
+        if any(player.still_playing for player in game.players):
+            game.game_state = GameState.BETTING
+        else:
+            game.game_state = GameState.GAME_OVER
 
     message = ""
     waiting_players_to_bet = []
@@ -81,21 +85,20 @@ def get_game_state():
     dealer_hand = {}
 
     if game.game_state == GameState.BETTING:
-        all_players_bet = all(
-            player.hands[0].bet is not None
-            for player in game.players
+        all_players_bet = (
+            any(player.still_playing for player in game.players)
+            and all(
+                not player.still_playing
+                or (player.hands and player.hands[0].bet is not None)
+                for player in game.players
+            )
         )
-
-        # for player in game.players:
-        #     print(
-        #         f"Player: {player.name}, "
-        #         f"Bet: {player.hands[0].bet}, "
-        #         f"Type: {type(player.hands[0].bet)}"
-        #     )
 
         if not all_players_bet:
             for player in game.players:
-                if player.hands[0].bet is None:
+                if player.still_playing and (
+                    not player.hands or player.hands[0].bet is None
+                ):
                     waiting_players_to_bet.append(player.name)
                     waiting_for_players_ids.append(player.player_id)
             message = "Waiting for players: " + ", ".join(waiting_players_to_bet) + "."
@@ -104,9 +107,8 @@ def get_game_state():
         player = game.players[game.current_player_index]
         hand = player.hands[game.current_hand_index]
         is_blackjack = game.test_blackjack(hand)
-        balance = player.balance
         if not is_blackjack:
-            valid_choices, options = game.get_valid_actions(hand, balance)
+            valid_choices, options = game.get_valid_actions(hand, player)
         message = f"{player.name} is playing their turn."
         waiting_for_players_ids.append(player.player_id)
 
@@ -119,8 +121,11 @@ def get_game_state():
         "cards_remaining": game.deck.cards_remaining(),
         "players": [
             {
+                "player_id": player.player_id,
                 "name": player.name,
                 "balance": player.balance,
+                "still_playing": player.still_playing,
+                "winnings": player.winnings,
                 "hands": player.hands
 
             }
@@ -171,16 +176,39 @@ def player_bet(request: PlayerBet):
 
     success, message = game.place_bet(found_player, request.bet_value)
 
-    if success and game.all_players_bet():
-        game.game_state = GameState.PLAYING
-        game.deal_initial_cards()
-        
+    if success: #and game.all_players_bet()
+        active_players = [
+            player for player in game.players
+            if player.still_playing
+        ]
 
+        if not active_players:
+            game.game_state = GameState.GAME_OVER
+
+        elif game.all_players_bet:
+            game.game_state = GameState.PLAYING
+            game.deal_initial_cards()
+
+            more_turns = game.advance_turn()
+
+            if not more_turns:
+                game.play_dealer_turn()
+                game.game_state = GameState.ROUND_END
+                game.bet_settlements = game.settle_bets()
+                game.round_end_time = time.monotonic()
+
+
+    left_table = success and not found_player.still_playing
+
+    if left_table:
+        found_player.calculate_winnings()
 
     return {
         "success": success,
-        "message": message
-        }
+        "message": message,
+        "left_table": left_table,
+        "winnings": found_player.winnings if left_table else None
+    }
 
 
 @app.get("/player/{player_id}/hand/{hand_index}")

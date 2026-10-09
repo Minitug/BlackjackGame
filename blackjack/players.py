@@ -13,4 +13,4 @@ class Player:
 
     def stop_playing(self):
         self.still_playing = False
-        self.calculate_winnings
+        self.calculate_winnings()
