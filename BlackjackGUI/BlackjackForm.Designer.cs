@@ -55,6 +55,7 @@
             lblPlayerHand = new Label();
             lblDealerHand = new Label();
             lblGameState = new Label();
+            txtRoundResults = new TextBox();
             pnlLobby.SuspendLayout();
             pnlJoin.SuspendLayout();
             pnlGame.SuspendLayout();
@@ -188,6 +189,7 @@
             // pnlGame
             // 
             pnlGame.BackColor = Color.DarkGreen;
+            pnlGame.Controls.Add(txtRoundResults);
             pnlGame.Controls.Add(btnPlaceBet);
             pnlGame.Controls.Add(btnGameRefresh);
             pnlGame.Controls.Add(btnSplit);
@@ -218,7 +220,7 @@
             btnPlaceBet.TabIndex = 14;
             btnPlaceBet.Text = "Place bet";
             btnPlaceBet.UseVisualStyleBackColor = false;
-            btnPlaceBet.Click += this.btnPlaceBet_Click;
+            btnPlaceBet.Click += btnPlaceBet_Click;
             // 
             // btnGameRefresh
             // 
@@ -239,6 +241,7 @@
             btnSplit.TabIndex = 12;
             btnSplit.Text = "Split";
             btnSplit.UseVisualStyleBackColor = false;
+            btnSplit.Click += btnSplit_Click;
             // 
             // btnSurrender
             // 
@@ -249,6 +252,7 @@
             btnSurrender.TabIndex = 11;
             btnSurrender.Text = "Surrender";
             btnSurrender.UseVisualStyleBackColor = false;
+            btnSurrender.Click += btnSurrender_Click;
             // 
             // btnDouble
             // 
@@ -259,6 +263,7 @@
             btnDouble.TabIndex = 10;
             btnDouble.Text = "Double down";
             btnDouble.UseVisualStyleBackColor = false;
+            btnDouble.Click += btnDouble_Click;
             // 
             // btnStand
             // 
@@ -269,6 +274,7 @@
             btnStand.TabIndex = 9;
             btnStand.Text = "Stand";
             btnStand.UseVisualStyleBackColor = false;
+            btnStand.Click += btnStand_Click;
             // 
             // btnHit
             // 
@@ -279,6 +285,7 @@
             btnHit.TabIndex = 8;
             btnHit.Text = "Hit";
             btnHit.UseVisualStyleBackColor = false;
+            btnHit.Click += btnHit_Click;
             // 
             // txtBetAmount
             // 
@@ -363,6 +370,19 @@
             lblGameState.TabIndex = 0;
             lblGameState.Text = "GameState";
             // 
+            // txtRoundResults
+            // 
+            txtRoundResults.BackColor = Color.DarkGreen;
+            txtRoundResults.ForeColor = SystemColors.Control;
+            txtRoundResults.Location = new Point(1642, 772);
+            txtRoundResults.Multiline = true;
+            txtRoundResults.Name = "txtRoundResults";
+            txtRoundResults.ReadOnly = true;
+            txtRoundResults.ScrollBars = ScrollBars.Both;
+            txtRoundResults.Size = new Size(555, 357);
+            txtRoundResults.TabIndex = 15;
+            txtRoundResults.Visible = false;
+            // 
             // BlackjackForm
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
@@ -412,5 +432,6 @@
         private Button btnStand;
         private Button btnHit;
         private TextBox txtBetAmount;
+        private TextBox txtRoundResults;
     }
 }
