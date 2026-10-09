@@ -85,16 +85,16 @@ def get_game_state():
     dealer_hand = {}
 
     if game.game_state == GameState.BETTING:
-        all_players_bet = (
-            any(player.still_playing for player in game.players)
-            and all(
-                not player.still_playing
-                or (player.hands and player.hands[0].bet is not None)
-                for player in game.players
-            )
-        )
+        # all_players_bet = (
+        #     any(player.still_playing for player in game.players)
+        #     and all(
+        #         not player.still_playing
+        #         or (player.hands and player.hands[0].bet is not None)
+        #         for player in game.players
+        #     )
+        # )
 
-        if not all_players_bet:
+        if not game.all_players_bet():
             for player in game.players:
                 if player.still_playing and (
                     not player.hands or player.hands[0].bet is None
@@ -166,7 +166,12 @@ def add_player(request: PlayerRequest):
 
 @app.post("/player/bet")
 def player_bet(request: PlayerBet):
-    found_player = None
+    if game.game_state != GameState.BETTING:
+        return {
+            "success": False,
+            "message": "Game is not in betting phase"
+        }
+    
     found_player = find_player_through_id(request.player_id)
 
     if found_player == None:
@@ -182,10 +187,21 @@ def player_bet(request: PlayerBet):
             if player.still_playing
         ]
 
+        print("=== BET DEBUG ===")
+        for player in game.players:
+            print(
+                f"Name: {player.name}, "
+                f"Active: {player.still_playing}, "
+                f"Bet: {player.hands[0].bet if player.hands else None}"
+            )
+        print("All players bet:", game.all_players_bet())
+
         if not active_players:
             game.game_state = GameState.GAME_OVER
 
-        elif game.all_players_bet:
+        
+
+        elif game.all_players_bet():
             game.game_state = GameState.PLAYING
             game.deal_initial_cards()
 

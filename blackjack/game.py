@@ -63,6 +63,18 @@ class BlackjackGame:
             and self.round_end_time is not None
             and time.monotonic() - self.round_end_time >= 5
         )
+
+    def all_players_bet(self):
+        active_players = [
+            player for player in self.players
+            if player.still_playing
+        ]
+
+        return bool(active_players) and all(
+            player.hands
+            and player.hands[0].bet is not None
+            for player in active_players
+        )
     
 
     def play_round_against_dealer(self):
@@ -433,12 +445,12 @@ class BlackjackGame:
             self.dealer.hands.append(Hand())
 
 
-    def all_players_bet(self):
-        return all(
-            player.hands[0].bet is not None
-            for player in self.players
-            if player.still_playing
-        )
+    # def all_players_bet(self):
+    #     return all(
+    #         player.hands[0].bet is not None
+    #         for player in self.players
+    #         if player.still_playing
+    #     )
 
     def deal_initial_cards(self):
         for i in range(2):
