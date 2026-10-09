@@ -187,14 +187,14 @@ def player_bet(request: PlayerBet):
             if player.still_playing
         ]
 
-        print("=== BET DEBUG ===")
-        for player in game.players:
-            print(
-                f"Name: {player.name}, "
-                f"Active: {player.still_playing}, "
-                f"Bet: {player.hands[0].bet if player.hands else None}"
-            )
-        print("All players bet:", game.all_players_bet())
+        # print("=== BET DEBUG ===")
+        # for player in game.players:
+        #     print(
+        #         f"Name: {player.name}, "
+        #         f"Active: {player.still_playing}, "
+        #         f"Bet: {player.hands[0].bet if player.hands else None}"
+        #     )
+        # print("All players bet:", game.all_players_bet())
 
         if not active_players:
             game.game_state = GameState.GAME_OVER
