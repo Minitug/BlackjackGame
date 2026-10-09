@@ -38,7 +38,7 @@ class Deck:
 
                     
 class Hand:
-    def __init__(self, bet=0, split=False):
+    def __init__(self, bet=None, split=False):
         self.cards = []
         self.value = 0
         self.bet = bet
