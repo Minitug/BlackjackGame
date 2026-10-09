@@ -1,6 +1,6 @@
-import requests
-import json
 import time
+import json
+import requests
 
 player_id = ""
 is_host = False
@@ -23,6 +23,12 @@ def get_game_state(silent = True):
         print(json.dumps(state, indent=4))
     return state
 
+def format_cards(cards):
+    return ", ".join(
+                f"{card['rank']} of {card['suit']}"
+                for card in cards
+            )
+
 def check_if_your_turn(silent = True, expected_game_state = None):
     state = get_game_state(silent = silent)
     while state["game_state"] == expected_game_state:
@@ -31,9 +37,115 @@ def check_if_your_turn(silent = True, expected_game_state = None):
                 return True
         # print(f"Gamestate in check_if_your_turn, {expected_game_state}")
         time.sleep(1)
-        state = get_game_state(silent = False)
+        state = get_game_state()
     return False
 
+def handle_betting():
+    state = get_game_state()
+    your_turn = check_if_your_turn(silent = True, expected_game_state="Betting")
+    if your_turn:
+        state = get_game_state()
+        new_bet = input("Make your bet: ")
+        make_bet = requests.post(
+        "http://127.0.0.1:8000/player/bet",
+        json={"player_id": player_id,
+                "bet_value": new_bet}
+        ).json()
+
+        state = get_game_state()
+
+        print(make_bet["message"])
+        # time.sleep(3)
+
+    if state["message"] == "":
+        print("Everyone has made their bet")
+    else:
+        print(state["message"])
+        # print("Someone have not made a bet yet")
+    time.sleep(1)
+
+def handle_playing():
+    state = get_game_state()
+    while state["game_state"] == "Playing":
+        your_turn = check_if_your_turn(silent = True, expected_game_state = "Playing")
+        if your_turn:
+            state = get_game_state(silent=True)
+
+            options = state["options"]
+            valid_choices = state["valid_choices"]
+
+            hand_index = state["current_hand_index"]
+
+            get_hand = requests.get(
+                f"http://127.0.0.1:8000/player/{player_id}/hand/{hand_index}"
+            ).json()
+
+            cards = get_hand["hand"]["cards"]
+
+            formatted_cards = format_cards(cards)
+
+            hand_value = get_hand["hand"]["value"]
+
+            print(f"Hand consists of: {formatted_cards}. Value of cards: {hand_value}")
+
+            # print(f"Hand consists of {get_hand["message"]["cards"]}")
+            
+            choice_text = f"Do you want to {', '.join(options)}? ({'/'.join(valid_choices)}): "
+            get_action = input(choice_text).strip().upper()
+
+            make_action = requests.post(
+                "http://127.0.0.1:8000/player/action",
+                json={"player_id": player_id,
+                    "action": get_action}
+            ).json()
+            print(make_action["message"])
+
+            if make_action["success"]:
+                hand_response = requests.get(
+                    f"http://127.0.0.1:8000/player/{player_id}/hand/{hand_index}"
+                ).json()
+                
+                hand = hand_response["hand"]
+
+                print(f"Hand: {format_cards(hand['cards'])}")
+                print(f"Value: {hand['value']}")
+
+                if hand["bust"]:
+                    print("BUST! Your turn is over.")
+                elif hand["stand"]:
+                    print("You stand. Your turn is over.")
+                elif hand["double_down"]:
+                    print("Double down complete. Your turn is over.")
+                elif hand["surrender"]:
+                    print("You surrendered. Your turn is over.")
+
+        time.sleep(1)
+        # print("Gamestate in Playing")
+        state = get_game_state()
+
+def show_settlements():
+    state = get_game_state()
+
+    print("\n========== ROUND RESULTS ==========\n")
+
+    for player in state["players"]:
+        print(f"{player['name']}'s hand:")
+
+        for hand in player["hands"]:
+            print(f"  {format_cards(hand['cards'])}")
+            print(f"  Value: {hand['value']}")
+
+    dealer = state["dealer_hand"]
+
+    print("\nDealer's hand:")
+    print(f"  {format_cards(dealer['cards'])}")
+    print(f"  Value: {dealer['value']}")
+
+    print("\n------------- RESULTS -------------\n")
+
+
+    for settlement in state["bet_settlements"]:
+        print(settlement)
 
 response = requests.get("http://127.0.0.1:8000/hello")
 
@@ -42,7 +154,7 @@ print(data["message"])
 
 add_player()
 
-state = get_game_state(silent = False)
+state = get_game_state()
 
 while state["game_state"] == "Lobby":
     state = get_game_state()
@@ -53,7 +165,7 @@ while state["game_state"] == "Lobby":
             requests.post("http://127.0.0.1:8000/game/start", json={"player_id": player_id})
             break
         elif choice == 'r':
-            state = get_game_state(silent = False)
+            state = get_game_state()
         else:
             print("Invalid input")
     else:
@@ -61,69 +173,22 @@ while state["game_state"] == "Lobby":
         time.sleep(1)
 
 
-your_turn = check_if_your_turn(silent = True, expected_game_state="Betting")
-if your_turn:
-    new_bet = input("Make your bet: ")
-    make_bet = requests.post(
-    "http://127.0.0.1:8000/player/bet",
-    json={"player_id": player_id,
-            "bet_value": new_bet}
-    ).json()
 
-    print(make_bet["message"])
-    # time.sleep(3)
-
-if state["message"] == "":
-    print("Everyone has made their bet")
-else:
-    print(state["message"])
-    print("Someone have not made a bet yet")
-time.sleep(1)
-
-state = get_game_state(silent = False)
-
-# print(f"My player id is {player_id}")
-# print(f"Gamestate: {state["game_state"]}")
-
-while state["game_state"] == "Playing":
-    your_turn = check_if_your_turn(silent = True, expected_game_state = "Playing")
-    if your_turn:
-        state = get_game_state(silent=True)
-        options = state["options"]
-        valid_choices = state["valid_choices"]
-        
-        get_hand = requests.get(
-        f"http://127.0.0.1:8000/player/{player_id}/hand"
-        ).json()
-
-        cards = get_hand["hand"]["cards"]
-
-        formatted_cards = ", ".join(
-            f"{card['rank']} of {card['suit']}"
-            for card in cards
-        )
-
-        hand_value = get_hand["hand"]["value"]
-
-        print(f"Hand consists of: {formatted_cards}. Value of cards: {hand_value}")
-
-        # print(f"Hand consists of {get_hand["message"]["cards"]}")
-        
-        choice_text = f"Do you want to {', '.join(options)}? ({'/'.join(valid_choices)}): "
-        get_action = input(choice_text).strip().upper()
-
-        make_action = requests.post(
-            "http://127.0.0.1:8000/player/action",
-            json={"player_id": player_id,
-                  "action": get_action}
-        ).json()
-        print(make_action["message"])
-
-    time.sleep(1)
-    # print("Gamestate in Playing")
+while True:
     state = get_game_state()
 
-state = get_game_state(silent=False)
+    if state["game_state"] == "Betting":
+        settlements_shown = False
+        handle_betting()
 
-for settlement in make_action["bet_settlements"]:
-    print(settlement)
+    elif state["game_state"] == "Playing":
+        handle_playing()
+
+    elif state["game_state"] == "Round End":
+        if not settlements_shown:
+            show_settlements()
+            settlements_shown = True
+
+    time.sleep(1)
+
+

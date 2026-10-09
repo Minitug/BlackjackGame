@@ -1,3 +1,4 @@
+import time
 import uuid
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -68,6 +69,10 @@ def get_game_state():
     if game is None:
         return{"error": "No game has been started"}
 
+    if game.ready_for_next_round():
+        game.new_round()
+        game.game_state = GameState.BETTING
+
     message = ""
     waiting_players_to_bet = []
     waiting_for_players_ids = []
@@ -81,12 +86,12 @@ def get_game_state():
             for player in game.players
         )
 
-        for player in game.players:
-            print(
-                f"Player: {player.name}, "
-                f"Bet: {player.hands[0].bet}, "
-                f"Type: {type(player.hands[0].bet)}"
-            )
+        # for player in game.players:
+        #     print(
+        #         f"Player: {player.name}, "
+        #         f"Bet: {player.hands[0].bet}, "
+        #         f"Type: {type(player.hands[0].bet)}"
+        #     )
 
         if not all_players_bet:
             for player in game.players:
@@ -125,7 +130,9 @@ def get_game_state():
         "message": message,
         "players_missing_actions": waiting_for_players_ids,
         "valid_choices": valid_choices,
-        "options": options
+        "options": options,
+        "bet_settlements": game.bet_settlements,
+        "current_hand_index": game.current_hand_index
     }
 
 @app.post("/player/add")
@@ -160,7 +167,7 @@ def player_bet(request: PlayerBet):
     if found_player == None:
         return {"message": "Player was not found"}
 
-    found_player.hands[0].bet = request.bet_value
+    # found_player.hands[0].bet = request.bet_value
 
     success, message = game.place_bet(found_player, request.bet_value)
 
@@ -176,8 +183,8 @@ def player_bet(request: PlayerBet):
         }
 
 
-@app.get("/player/{player_id}/hand")
-def get_player_hand(player_id: str):
+@app.get("/player/{player_id}/hand/{hand_index}")
+def get_player_hand(player_id: str, hand_index: int):
     found_player = find_player_through_id(player_id)
 
     if found_player == None:
@@ -186,11 +193,15 @@ def get_player_hand(player_id: str):
             "message": "It's not your turn."
         }
 
-    current_hand = found_player.hands[game.current_hand_index]
+    if not 0 <= hand_index < len(found_player.hands):
+        return {
+            "success": False,
+            "message": "Hand not found."
+        }
 
     return{
         "success": True,
-        "hand": current_hand
+        "hand": found_player.hands[hand_index]
     }
 
 @app.post("/player/action")
@@ -222,13 +233,13 @@ def player_action(request: PlayerAction):
     if success:
         more_turns = game.advance_turn()
 
-    if not more_turns:
-        game.play_dealer_turn()
-        game.game_state = GameState.ROUND_END
-        game.bet_settlements = game.settle_bets()
+        if not more_turns:
+            game.play_dealer_turn()
+            game.game_state = GameState.ROUND_END
+            game.bet_settlements = game.settle_bets()
+            game.round_end_time = time.monotonic()
 
     return {
         "success": success,
-        "message": message,
-        "bet_settlements": game.bet_settlements
+        "message": message
     }

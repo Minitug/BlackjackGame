@@ -1,6 +1,7 @@
-from blackjack.cards import Deck, Hand
-from blackjack.players import Player
+import time
 from enum import Enum
+from blackjack.players import Player
+from blackjack.cards import Deck, Hand
 
 class GameState(Enum):
     LOBBY = "Lobby"
@@ -52,6 +53,16 @@ class BlackjackGame:
 
         self.bet_settlements = []
 
+        self.round_end_time = None
+
+
+    def ready_for_next_round(self):
+        return(
+            self.game_state == GameState.ROUND_END
+            and self.round_end_time is not None
+            and time.monotonic() - self.round_end_time >= 5
+        )
+    
 
     def play_round_against_dealer(self):
 
@@ -188,7 +199,7 @@ class BlackjackGame:
             else:
                 settling_hand = 1
                 for text in winner_texts:
-                    message.append(f"{player.name}'s hand {settling_hand}: {text}\n")
+                    message.append(f"{player.name}'s hand {settling_hand}: {text}")
                     settling_hand += 1
             message.append(f"{player.name}'s balance: ${player.balance:.2f}")
             if player.balance < self.minimum_bet:
@@ -399,6 +410,10 @@ class BlackjackGame:
 
     def new_round(self):
         self.bet_settlements = []
+        self.round_end_time = None
+
+        self.current_player_index = 0
+        self.current_hand_index = 0
 
         active_players = sum(player.still_playing for player in self.players)
         minimum_cards = active_players * 10 + 5
