@@ -17,7 +17,8 @@ namespace BlackjackGUI
                 btnStand,
                 btnDouble,
                 btnSplit,
-                btnSurrender
+                btnSurrender,
+                btnPlaceBet
             };
 
             foreach (Button button in actionButtons)
@@ -51,6 +52,7 @@ namespace BlackjackGUI
         private int currentBet = 0;
         private bool actionInProgress = false;
         private string previousGameState = "";
+        private decimal currentBalance = 0;
 
 
         private void ShowJoinScreen()
@@ -195,6 +197,7 @@ namespace BlackjackGUI
             if (currentPlayer != null)
             {
                 lblBalance.Text = $"Balance: {currentPlayer.balance}";
+                currentBalance = currentPlayer.balance;
             }
 
             if (state.game_state == "Lobby")
@@ -216,6 +219,43 @@ namespace BlackjackGUI
 
                 lblGameState.Text = state.game_state;
                 lblGameMessage.Text = state.message;
+            }
+
+            if (state.game_state == "Betting" &&
+                previousGameState != "Betting")
+            {
+                hasPlacedBet = false;
+            }
+
+            bool canBet =
+                state.game_state == "Betting" &&
+                !hasPlacedBet;
+
+            SetActionButtonState(btnPlaceBet, canBet);
+
+            txtBetAmount.Enabled = canBet;
+
+            if (state.game_state == "Round End" &&
+                state.dealer_hand != null &&
+                state.dealer_hand.cards.Count > 0)
+            {
+                var dealer = state.dealer_hand;
+
+                string cards = string.Join(", ",
+                    dealer.cards.Select(card =>
+                        $"{card.rank} of {card.suit}")
+                );
+
+                lblDealerHand.Text =
+                    $"Dealer: {cards} (Value: {dealer.value})";
+            }
+            else if (state.game_state == "Betting")
+            {
+                lblDealerHand.Text = "Dealer: Waiting for cards";
+            }
+            else
+            {
+                lblDealerHand.Text = "Dealer: Hidden";
             }
 
             if (state.game_state == "Round End" &&
@@ -317,6 +357,17 @@ namespace BlackjackGUI
                 MessageBox.Show("Bet cannot be negative.");
                 return;
             }
+            else if (betAmount > currentBalance)
+            {
+                MessageBox.Show(
+                    $"You cannot bet more than your balance ({currentBalance}).",
+                    "Invalid bet",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+
+                return;
+            }
 
             try
             {
@@ -337,6 +388,9 @@ namespace BlackjackGUI
 
                 currentBet = betAmount;
                 lblBet.Text = $"Bet: {betAmount}";
+
+                SetActionButtonState(btnPlaceBet, false);
+                txtBetAmount.Enabled = false;
 
                 await RefreshGameStateAsync();
             }
