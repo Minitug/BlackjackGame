@@ -22,7 +22,7 @@
     {
         public string player_id { get; set; } = "";
         public string name { get; set; } = "";
-        public int balance { get; set; }
+        public decimal balance { get; set; }
 
         public List<HandInfo> hands { get; set; } = new();
     }
