@@ -153,16 +153,11 @@ namespace BlackjackGUI
             }
         }
 
-        private async void btnRefresh_Click(object sender, EventArgs e)
-        {
-            await RefreshLobbyAsync();
-        }
-
         private async void btnStart_Click(object sender, EventArgs e)
         {
             if (!isHost)
                 return;
-            
+
             try
             {
                 var response = await http.PostAsJsonAsync(
@@ -554,6 +549,11 @@ namespace BlackjackGUI
 
             txtRoundResults.Text = results.ToString();
             txtRoundResults.Visible = true;
+        }
+
+        private void BlackjackForm_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }
